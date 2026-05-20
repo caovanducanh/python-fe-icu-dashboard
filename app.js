@@ -3,7 +3,10 @@
    ========================================== */
 
 // 1. Cấu hình các biến toàn cục và môi trường
-const BACKEND_URL = window.env?.BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = window.env?.BACKEND_URL || 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? "http://localhost:8000" 
+        : "https://python-be-icu-dashboard.onrender.com");
 let patientsData = [];
 let charts = {
     pieChart: null,
