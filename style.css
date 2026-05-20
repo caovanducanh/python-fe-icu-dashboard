@@ -462,6 +462,12 @@ body {
     width: 100%;
 }
 
+.tab-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
 /* 4. KPI Statistics Cards */
 .kpi-grid {
     display: grid;
