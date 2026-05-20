@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICU Patient Analytics Dashboard</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Style CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-square-h pulse"></i>
+                    <span>MedICU</span>
+                </div>
+                <p class="subtitle">Hệ Thống Phân Tích Bệnh Nhân</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item active" data-tab="dashboard">
+                        <a href="#dashboard"><i class="fa-solid fa-chart-pie"></i><span>Tổng Quan</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="patients">
+                        <a href="#patients"><i class="fa-solid fa-database"></i><span>Dữ Liệu Chi Tiết</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="risk">
+                        <a href="#risk"><i class="fa-solid fa-triangle-exclamation"></i><span>Phân Tích Rủi Ro</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="timeseries">
+                        <a href="#timeseries"><i class="fa-solid fa-chart-line"></i><span>Chuỗi & Dự Báo</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="deep">
+                        <a href="#deep"><i class="fa-solid fa-magnifying-glass-chart"></i><span>Phân Tích Sâu</span></a>
+                    </li>
+                    <li class="nav-item" data-tab="help">
+                        <a href="#help"><i class="fa-solid fa-circle-info"></i><span>Hướng Dẫn</span></a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Excel Operations Widget -->
+            <div class="excel-widget">
+                <div class="widget-header">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span>Tải & Nhập Excel</span>
+                </div>
+                <p class="widget-desc">Quản lý cơ sở dữ liệu nhanh thông qua file bảng tính.</p>
+                <a href="/api/patients/kaggle-excel" class="btn btn-secondary btn-block" id="btn-download-sample">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Tải Excel Mẫu
+                </a>
+                <div class="upload-area" id="upload-area">
+                    <input type="file" id="file-excel" accept=".xlsx, .xls" hidden>
+                    <div class="upload-placeholder" id="upload-placeholder">
+                        <i class="fa-solid fa-file-arrow-up"></i>
+                        <span>Kéo thả hoặc nhấn vào đây</span>
+                        <span class="file-format">Hỗ trợ .xlsx, .xls</span>
+                    </div>
+                    <div class="upload-file-info hidden" id="upload-file-info">
+                        <i class="fa-regular fa-file-excel text-success"></i>
+                        <span id="selected-filename">filename.xlsx</span>
+                        <button type="button" class="btn-remove-file" id="btn-remove-file">&times;</button>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn btn-primary btn-block hidden" id="btn-upload-submit">
+                    <i class="fa-solid fa-circle-check"></i> Import Dữ Liệu
+                </button>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="dot online"></span>
+                    <span>SQLite Connected</span>
+                </div>
+                <p class="copyright">v1.0.0 &bull; 2026</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-title">
+                    <h1 id="page-title">Dashboard Phân Tích Bệnh Nhân ICU</h1>
+                    <p class="text-muted" id="page-subtitle">Dữ liệu phân tích lâm sàng và tỷ lệ tiếp nhận phòng điều trị tích cực</p>
+                </div>
+                <div class="header-actions">
+                    <div class="date-badge">
+                        <i class="fa-regular fa-calendar"></i>
+                        <span id="current-date">--/--/----</span>
+                    </div>
+                    <button class="btn btn-primary" id="btn-open-modal">
+                        <i class="fa-solid fa-plus"></i> Thêm Bệnh Nhân
+                    </button>
+                </div>
+            </header>
+
+            <!-- Notifications / Alert system -->
+            <div class="notification-container" id="notification-container"></div>
+
+            <!-- Dashboard Tab Content -->
+            <section class="tab-content" id="tab-dashboard">
+                <!-- KPI Statistics Cards Grid -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-content">
+                            <span class="kpi-title">Tổng số bệnh nhân</span>
+                            <span class="kpi-value" id="kpi-total">0</span>
+                        </div>
+                        <div class="kpi-icon icon-blue">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card glass">
+                        <div class="kpi-content">
+                            <span class="kpi-title">Nhập khoa ICU</span>
+                            <span class="kpi-value" id="kpi-icu">0</span>
+                        </div>
+                        <div class="kpi-icon icon-red">
+                            <i class="fa-solid fa-bed-pulse"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card glass">
+                        <div class="kpi-content">
+                            <span class="kpi-title">Tỷ lệ ICU</span>
+                            <span class="kpi-value" id="kpi-icu-rate">0%</span>
+                        </div>
+                        <div class="kpi-icon icon-purple">
+                            <i class="fa-solid fa-percent"></i>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-content">
+                            <span class="kpi-title">Nhịp tim & SpO2 TB</span>
+                            <div class="kpi-multi-value">
+                                <span class="kpi-value-sm text-heart" id="kpi-avg-heart">0 <span class="unit">bpm</span></span>
+                                <span class="divider">/</span>
+                                <span class="kpi-value-sm text-oxygen" id="kpi-avg-oxygen">0%</span>
+                            </div>
+                        </div>
+                        <div class="kpi-icon icon-teal">
+                            <i class="fa-solid fa-heart-pulse"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <!-- Pie Chart: ICU vs Non-ICU -->
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h3>Phân Phối Ca Bệnh Điều Trị</h3>
+                            <p class="chart-subtitle">Tỉ lệ phần trăm bệnh nhân điều trị ICU và điều trị thường</p>
+                        </div>
+                        <div class="chart-wrapper pie-wrapper">
+                            <canvas id="chart-icu-pie"></canvas>
+                        </div>
+                        <div class="chart-footer">
+                            <p id="pie-analysis-text" class="analysis-text">Đang tải phân tích...</p>
+                        </div>
+                    </div>
+
+                    <!-- Bar Chart: ICU according to Age Groups -->
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h3>Tỷ Lệ Nhập ICU Theo Nhóm Tuổi</h3>
+                            <p class="chart-subtitle">So sánh số ca và tỷ lệ % vào ICU giữa các nhóm tuổi</p>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-age-bar"></canvas>
+                        </div>
+                        <div class="chart-footer">
+                            <p id="bar-analysis-text" class="analysis-text">Đang tải phân tích...</p>
+                        </div>
+                    </div>
+
+                    <!-- Line Chart: Health metrics average by Age Groups -->
+                    <div class="chart-card glass col-span-2">
+                        <div class="chart-header">
+                            <div class="flex-between">
+                                <div>
+                                    <h3>Chỉ Số Sức Khỏe Trung Bình Theo Độ Tuổi</h3>
+                                    <p class="chart-subtitle">Mối quan hệ giữa Nhịp tim (BPM) và Độ bão hòa oxy máu SpO2 (%) của các độ tuổi</p>
+                                </div>
+                                <div class="chart-selectors">
+                                    <button class="selector-btn active" data-metric="both">Cả hai</button>
+                                    <button class="selector-btn" data-metric="heart">Nhịp tim</button>
+                                    <button class="selector-btn" data-metric="oxygen">SpO2</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper line-wrapper">
+                            <canvas id="chart-metrics-line"></canvas>
+                        </div>
+                        <div class="chart-footer">
+                            <p id="line-analysis-text" class="analysis-text">Đang tải phân tích...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Patients List Tab Content -->
+            <section class="tab-content hidden" id="tab-patients">
+                <div class="table-card glass">
+                    <!-- Filters and Search bar -->
+                    <div class="table-toolbar">
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="patient-search" placeholder="Tìm kiếm theo tên bệnh nhân...">
+                        </div>
+                        <div class="toolbar-actions">
+                            <button type="button" class="btn btn-danger" id="btn-clear-db">
+                                <i class="fa-solid fa-trash-can"></i> Xóa Tất Cả
+                            </button>
+                            <div class="select-wrapper">
+                                <select id="filter-icu">
+                                    <option value="all">Tất cả bệnh nhân</option>
+                                    <option value="icu">Bệnh nhân ICU (1)</option>
+                                    <option value="non-icu">Không ICU (0)</option>
+                                </select>
+                            </div>
+                            <div class="select-wrapper">
+                                <select id="filter-age">
+                                    <option value="all">Tất cả độ tuổi</option>
+                                    <option value="0-19">0 - 19 tuổi</option>
+                                    <option value="20-39">20 - 39 tuổi</option>
+                                    <option value="40-59">40 - 59 tuổi</option>
+                                    <option value="60-79">60 - 79 tuổi</option>
+                                    <option value="80+">Trên 80 tuổi</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Responsive Table -->
+                    <div class="table-wrapper">
+                        <table id="patient-table">
+                            <thead>
+                                <tr>
+                                    <th>Mã bệnh nhân</th>
+                                    <th>Họ và tên</th>
+                                    <th>Tuổi</th>
+                                    <th>Giới tính</th>
+                                    <th>ICU</th>
+                                    <th>Nhịp tim (BPM)</th>
+                                    <th>SpO2 (%)</th>
+                                    <th>Ngày nhập viện</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patient-table-body">
+                                <!-- Dữ liệu sẽ được render từ app.js -->
+                                <tr>
+                                    <td colspan="9" class="text-center py-5">Đang tải danh sách bệnh nhân...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="table-footer">
+                        <span id="table-row-count">Hiển thị 0 bệnh nhân</span>
+                        <div class="pagination" id="table-pagination" style="display: flex; gap: 0.5rem;">
+                            <!-- Pagination buttons will be generated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phân Tích Rủi Ro (Treemap & Ma trận Rủi ro) -->
+            <section class="tab-content hidden" id="tab-risk">
+                <div class="risk-analysis-grid">
+                    <!-- Bản đồ Rủi ro (Treemap) -->
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h2><i class="fa-solid fa-square-poll-vertical text-green"></i> Bản đồ Rủi ro (Treemap)</h2>
+                            <p class="chart-subtitle">Diện tích tỉ lệ với số bệnh nhân, màu sắc thể hiện tỉ lệ ICU</p>
+                        </div>
+                        <div class="treemap-wrapper">
+                            <div id="treemap-container" class="treemap-container">
+                                <div class="text-center text-muted py-5">Đang dựng bản đồ rủi ro...</div>
+                            </div>
+                        </div>
+                        <div class="chart-analysis" id="treemap-analysis-text">
+                            Đang tải phân tích bản đồ...
+                        </div>
+                    </div>
+
+                    <!-- Ma trận Rủi ro (Risk Matrix) -->
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h2><i class="fa-solid fa-table-cells text-rose"></i> Ma trận Rủi ro (Phân loại SpO2 và Nhịp tim)</h2>
+                            <p class="chart-subtitle">Bấm vào từng ô để lọc danh sách bệnh nhân tương ứng bên dưới</p>
+                        </div>
+                        
+                        <div class="matrix-container-wrapper">
+                            <div class="risk-matrix-grid">
+                                <div class="matrix-corner">SpO2 \ HR</div>
+                                <div class="matrix-col-header">Chậm (&lt;60 bpm)</div>
+                                <div class="matrix-col-header">Thường (60-100)</div>
+                                <div class="matrix-col-header">Nhanh (&gt;100 bpm)</div>
+
+                                <div class="matrix-row-header">Cao (&ge;95%)</div>
+                                <div class="matrix-cell safe" id="cell-high-bradycardia" data-spo2="high" data-hr="bradycardia">0</div>
+                                <div class="matrix-cell safe" id="cell-high-normal" data-spo2="high" data-hr="normal">0</div>
+                                <div class="matrix-cell warning" id="cell-high-tachycardia" data-spo2="high" data-hr="tachycardia">0</div>
+
+                                <div class="matrix-row-header">Trung bình (90-94%)</div>
+                                <div class="matrix-cell warning" id="cell-medium-bradycardia" data-spo2="medium" data-hr="bradycardia">0</div>
+                                <div class="matrix-cell warning" id="cell-medium-normal" data-spo2="medium" data-hr="normal">0</div>
+                                <div class="matrix-cell danger" id="cell-medium-tachycardia" data-spo2="medium" data-hr="tachycardia">0</div>
+
+                                <div class="matrix-row-header">Thấp (&lt;90%)</div>
+                                <div class="matrix-cell danger" id="cell-low-bradycardia" data-spo2="low" data-hr="bradycardia">0</div>
+                                <div class="matrix-cell danger" id="cell-low-normal" data-spo2="low" data-hr="normal">0</div>
+                                <div class="matrix-cell danger" id="cell-low-tachycardia" data-spo2="low" data-hr="tachycardia">0</div>
+                            </div>
+                        </div>
+
+                        <div class="matrix-legend">
+                            <span class="legend-item"><span class="legend-color safe"></span> An toàn (Nguy cơ thấp)</span>
+                            <span class="legend-item"><span class="legend-color warning"></span> Theo dõi (Nguy cơ trung bình)</span>
+                            <span class="legend-item"><span class="legend-color danger"></span> Nguy kịch (Nguy cơ cao)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danh sách bệnh nhân được lọc từ ô Ma trận rủi ro -->
+                <div class="table-card glass hidden" id="matrix-filtered-card">
+                    <div class="table-toolbar">
+                        <h2 id="matrix-filter-title"><i class="fa-solid fa-hospital-user text-rose"></i> Danh sách bệnh nhân nguy cơ</h2>
+                        <button class="btn btn-secondary btn-sm" id="btn-close-matrix-filter">Xóa bộ lọc ma trận</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="matrix-filtered-table">
+                            <thead>
+                                <tr>
+                                    <th>Mã</th>
+                                    <th>Họ và tên</th>
+                                    <th>Tuổi</th>
+                                    <th>Giới tính</th>
+                                    <th>Tình trạng</th>
+                                    <th>Nhịp tim</th>
+                                    <th>SpO2</th>
+                                    <th>Ngày nhập</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matrix-filtered-tbody">
+                                <!-- JS render -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chuỗi Thời Gian & Dự Báo -->
+            <section class="tab-content hidden" id="tab-timeseries">
+                <div class="charts-grid">
+                    <!-- Chuỗi thời gian -->
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h2><i class="fa-solid fa-chart-area text-cyan"></i> Diễn biến Chuỗi thời gian</h2>
+                            <p class="chart-subtitle">Theo dõi số lượng bệnh nhân nhập viện và các chỉ số sinh tồn trung bình hàng ngày</p>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="chart-timeseries-line"></canvas>
+                        </div>
+                        <div class="chart-analysis" id="timeseries-analysis-text">
+                            Đang tải phân tích chuỗi thời gian...
+                        </div>
+                    </div>
+
+                    <!-- Dự báo xu hướng -->
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h2><i class="fa-solid fa-wand-magic-sparkles text-purple"></i> Dự báo Số lượng Nhập viện (Mô hình Hồi quy)</h2>
+                            <p class="chart-subtitle">Dữ liệu thực tế so với xu hướng dự báo tuyến tính trong 7 ngày tiếp theo</p>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="chart-forecast-line"></canvas>
+                        </div>
+                        <div class="chart-analysis" id="forecast-analysis-text">
+                            Đang tải phân tích dự báo...
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Phân Tích Sâu (Nâng cao) -->
+            <section class="tab-content hidden" id="tab-deep">
+                <div class="deep-analysis-container">
+                    <!-- KPI chỉ số tương quan -->
+                    <div class="deep-kpi-grid">
+                        <div class="kpi-card glass">
+                            <div class="kpi-icon"><i class="fa-solid fa-arrow-down-up-lock text-cyan"></i></div>
+                            <div class="kpi-info">
+                                <h3 class="kpi-title">Tương quan Tuổi vs SpO2</h3>
+                                <p class="kpi-value" id="stat-corr-age-spo2">0.00</p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar negative" id="progress-age-spo2" style="width: 0%;"></div>
+                                </div>
+                                <span class="kpi-desc" id="desc-age-spo2">Chưa xác định tương quan</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card glass">
+                            <div class="kpi-icon"><i class="fa-solid fa-heart-circle-exclamation text-rose"></i></div>
+                            <div class="kpi-info">
+                                <h3 class="kpi-title">Tương quan Tuổi vs Nhịp tim</h3>
+                                <p class="kpi-value" id="stat-corr-age-hr">0.00</p>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar positive" id="progress-age-hr" style="width: 0%;"></div>
+                                </div>
+                                <span class="kpi-desc" id="desc-age-hr">Chưa xác định tương quan</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card glass">
+                            <div class="kpi-icon"><i class="fa-solid fa-users-viewfinder text-purple"></i></div>
+                            <div class="kpi-info">
+                                <h3 class="kpi-title">Rủi ro ICU người lớn tuổi</h3>
+                                <p class="kpi-value" id="stat-relative-risk">1.0x</p>
+                                <span class="kpi-desc" id="desc-relative-risk">Đang tính toán rủi ro tương đối...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Báo cáo phân tích sâu chi tiết -->
+                    <div class="report-card glass">
+                        <div class="report-header">
+                            <h2><i class="fa-solid fa-file-invoice text-primary"></i> Báo cáo Phân tích Phân nhóm Lâm sàng & Dịch tễ học</h2>
+                            <p class="chart-subtitle">Tự động tổng hợp dựa trên dữ liệu hiện tại trong cơ sở dữ liệu SQLite</p>
+                        </div>
+                        <div class="report-body">
+                            <div class="report-section">
+                                <h3>1. Phân tích tương quan độ tuổi và chỉ số sinh tồn (Vital Signs)</h3>
+                                <p id="report-p1">Đang chạy thuật toán thống kê...</p>
+                            </div>
+                            <div class="report-section">
+                                <h3>2. Đánh giá Nguy cơ Hồi sức Tích cực (ICU Admission Probability)</h3>
+                                <p id="report-p2">Đang phân tích tỷ lệ rủi ro dịch tễ...</p>
+                            </div>
+                            <div class="report-section">
+                                <h3>3. Đề xuất quy trình sàng lọc và phân loại lâm sàng (Clinical Recommendation)</h3>
+                                <ul id="report-list">
+                                    <li>Đang tổng hợp hướng dẫn lâm sàng dựa trên số liệu...</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Documentation / Help Tab Content -->
+            <section class="tab-content hidden" id="tab-help">
+                <div class="help-grid">
+                    <div class="help-card glass">
+                        <h2><i class="fa-solid fa-hospital-user text-primary"></i> Quản Lý Dữ Liệu Bệnh Nhân</h2>
+                        <p>Ứng dụng hỗ trợ lưu trữ dữ liệu bệnh nhân thông qua hệ quản trị cơ sở dữ liệu gọn nhẹ **SQLite** ở backend Python FastAPI.</p>
+                        
+                        <h3>Cách thêm mới bệnh nhân:</h3>
+                        <ol>
+                            <li>Nhấn vào nút <strong>"Thêm Bệnh Nhân"</strong> ở góc trên bên phải màn hình.</li>
+                            <li>Nhập đầy đủ thông tin: Họ tên, Tuổi, Giới tính, tình trạng ICU, Nhịp tim, chỉ số SpO2 và Ngày nhập viện.</li>
+                            <li>Bấm <strong>"Lưu thông tin"</strong> để thêm mới vào cơ sở dữ liệu SQLite.</li>
+                        </ol>
+                        
+                        <h3>Cách xóa bệnh nhân:</h3>
+                        <ol>
+                            <li>Chuyển sang tab <strong>"Danh Sách"</strong> ở menu bên trái.</li>
+                            <li>Tìm kiếm bệnh nhân cần xóa bằng thanh tìm kiếm hoặc bộ lọc.</li>
+                            <li>Bấm nút xóa <i class="fa-solid fa-trash-can text-danger"></i> ở cột cuối cùng của bệnh nhân tương ứng. Xác nhận xóa.</li>
+                        </ol>
+                    </div>
+
+                    <div class="help-card glass">
+                        <h2><i class="fa-solid fa-file-excel text-success"></i> Nhập Dữ Liệu Hàng Loạt Qua Excel</h2>
+                        <p>Ứng dụng hỗ trợ import tệp mẫu chuẩn **Kaggle (Sirio-Libanés)**:</p>
+                        <ul>
+                            <li><strong>Mẫu Kaggle (Sirio)</strong>: File nghiên cứu thực tế lâm sàng gồm 231 cột. Backend sẽ tự động nhóm các dòng quan sát theo mã bệnh nhân, giải mã và quy chuẩn hóa các chỉ số sinh tồn bị min-max scale về dạng thực tế để hiển thị lên biểu đồ.</li>
+                        </ul>
+                        
+                        <h3>Quy trình nhập file Excel:</h3>
+                        <ol>
+                            <li>Nhấn nút <strong>"Tải Excel Mẫu"</strong> ở sidebar bên trái để tải file mẫu Kaggle.</li>
+                            <li>Chọn tệp tin Excel tại khu vực <strong>"Kéo thả hoặc nhấn vào đây"</strong> ở sidebar.</li>
+                            <li>Bấm nút <strong>"Import Dữ Liệu"</strong> để lưu trữ toàn bộ thông tin lâm sàng vào cơ sở dữ liệu SQLite.</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Form: Add Patient -->
+    <div class="modal-overlay" id="modal-patient">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-user-plus"></i> Thêm Bệnh Nhân Mới</h2>
+                <button class="btn-close-modal" id="btn-close-modal">&times;</button>
+            </div>
+            <form id="form-patient">
+                <div class="form-grid">
+                    <div class="form-group col-span-2">
+                        <label for="p-name">Họ và Tên <span class="required">*</span></label>
+                        <input type="text" id="p-name" placeholder="Ví dụ: Nguyễn Văn A" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="p-age">Tuổi <span class="required">*</span></label>
+                        <input type="number" id="p-age" min="0" max="120" placeholder="Ví dụ: 45" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="p-gender">Giới tính <span class="required">*</span></label>
+                        <select id="p-gender" required>
+                            <option value="" disabled selected>Chọn giới tính</option>
+                            <option value="Nam">Nam</option>
+                            <option value="Nữ">Nữ</option>
+                            <option value="Khác">Khác</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="p-heart">Nhịp tim (BPM) <span class="required">*</span></label>
+                        <input type="number" id="p-heart" min="30" max="250" placeholder="Ví dụ: 80" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="p-oxygen">SpO2 (%) <span class="required">*</span></label>
+                        <input type="number" id="p-oxygen" min="50" max="100" placeholder="Ví dụ: 98" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="p-date">Ngày nhập viện <span class="required">*</span></label>
+                        <input type="date" id="p-date" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Điều trị tại khoa ICU? <span class="required">*</span></label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="p-icu" value="1" required>
+                                <span class="radio-custom"></span> Có (ICU)
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-icu" value="0" checked required>
+                                <span class="radio-custom"></span> Không (Khoa thường)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary">Lưu thông tin</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Load cấu hình môi trường và mã nguồn JavaScript -->
+    <script src="env.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
