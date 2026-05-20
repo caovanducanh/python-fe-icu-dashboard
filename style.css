@@ -134,12 +134,14 @@ body {
     border-right: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;
-    padding: 2rem 1.5rem;
+    padding: 1.25rem 1rem;
     flex-shrink: 0;
+    max-height: 100vh;
+    overflow-y: auto;
 }
 
 .sidebar-header {
-    margin-bottom: 2.5rem;
+    margin-bottom: 1.5rem;
 }
 
 .logo {
@@ -173,14 +175,14 @@ body {
 }
 
 .nav-item {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
 }
 
 .nav-item a {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.85rem 1.25rem;
+    padding: 0.65rem 1rem;
     color: var(--text-secondary);
     text-decoration: none;
     border-radius: var(--border-radius-sm);
@@ -214,8 +216,8 @@ body {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.04);
     border-radius: var(--border-radius-md);
-    padding: 1.25rem;
-    margin-bottom: 2rem;
+    padding: 0.85rem;
+    margin-bottom: 1rem;
 }
 
 .widget-header {
@@ -234,15 +236,15 @@ body {
 .widget-desc {
     font-size: 0.75rem;
     color: var(--text-secondary);
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     line-height: 1.4;
 }
 
 .upload-area {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     border: 1.5px dashed rgba(255, 255, 255, 0.1);
     border-radius: var(--border-radius-sm);
-    padding: 1rem;
+    padding: 0.75rem;
     text-align: center;
     cursor: pointer;
     background: rgba(0, 0, 0, 0.1);
