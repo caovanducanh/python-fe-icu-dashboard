@@ -10,10 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome for Premium Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom Style CSS -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="app-container">
@@ -29,23 +27,14 @@
             
             <nav class="sidebar-nav">
                 <ul>
-                    <li class="nav-item active" data-tab="dashboard">
-                        <a href="#dashboard"><i class="fa-solid fa-chart-pie"></i><span>Tổng Quan</span></a>
+                    <li class="nav-item {% if tab == 'dashboard' %}active{% endif %}" data-tab="dashboard">
+                        <a href="/?tab=dashboard"><i class="fa-solid fa-chart-pie"></i><span>Tổng Quan</span></a>
                     </li>
-                    <li class="nav-item" data-tab="patients">
-                        <a href="#patients"><i class="fa-solid fa-database"></i><span>Dữ Liệu Chi Tiết</span></a>
+                    <li class="nav-item {% if tab == 'patients' %}active{% endif %}" data-tab="patients">
+                        <a href="/?tab=patients"><i class="fa-solid fa-database"></i><span>Dữ Liệu Chi Tiết</span></a>
                     </li>
-                    <li class="nav-item" data-tab="risk">
-                        <a href="#risk"><i class="fa-solid fa-triangle-exclamation"></i><span>Phân Tích Rủi Ro</span></a>
-                    </li>
-                    <li class="nav-item" data-tab="timeseries">
-                        <a href="#timeseries"><i class="fa-solid fa-chart-line"></i><span>Chuỗi & Dự Báo</span></a>
-                    </li>
-                    <li class="nav-item" data-tab="deep">
-                        <a href="#deep"><i class="fa-solid fa-magnifying-glass-chart"></i><span>Phân Tích Sâu</span></a>
-                    </li>
-                    <li class="nav-item" data-tab="help">
-                        <a href="#help"><i class="fa-solid fa-circle-info"></i><span>Hướng Dẫn</span></a>
+                    <li class="nav-item {% if tab == 'help' %}active{% endif %}" data-tab="help">
+                        <a href="/?tab=help"><i class="fa-solid fa-circle-info"></i><span>Hướng Dẫn</span></a>
                     </li>
                 </ul>
             </nav>
@@ -101,9 +90,9 @@
                         <i class="fa-regular fa-calendar"></i>
                         <span id="current-date">--/--/----</span>
                     </div>
-                    <button class="btn btn-primary" id="btn-open-modal">
+                    <a href="/?tab=create" class="btn btn-primary" id="btn-open-modal">
                         <i class="fa-solid fa-plus"></i> Thêm Bệnh Nhân
-                    </button>
+                    </a>
                 </div>
             </header>
 
@@ -111,13 +100,13 @@
             <div class="notification-container" id="notification-container"></div>
 
             <!-- Dashboard Tab Content -->
-            <section class="tab-content" id="tab-dashboard">
+            <section class="tab-content {% if tab != 'dashboard' %}hidden{% endif %}" id="tab-dashboard">
                 <!-- KPI Statistics Cards Grid -->
                 <div class="kpi-grid">
                     <div class="kpi-card glass">
                         <div class="kpi-content">
                             <span class="kpi-title">Tổng số bệnh nhân</span>
-                            <span class="kpi-value" id="kpi-total">0</span>
+                            <span class="kpi-value" id="kpi-total">{{ stats.total_patients }}</span>
                         </div>
                         <div class="kpi-icon icon-blue">
                             <i class="fa-solid fa-users"></i>
@@ -127,7 +116,7 @@
                     <div class="kpi-card glass">
                         <div class="kpi-content">
                             <span class="kpi-title">Nhập khoa ICU</span>
-                            <span class="kpi-value" id="kpi-icu">0</span>
+                            <span class="kpi-value" id="kpi-icu">{{ stats.icu_count }}</span>
                         </div>
                         <div class="kpi-icon icon-red">
                             <i class="fa-solid fa-bed-pulse"></i>
@@ -137,7 +126,7 @@
                     <div class="kpi-card glass">
                         <div class="kpi-content">
                             <span class="kpi-title">Tỷ lệ ICU</span>
-                            <span class="kpi-value" id="kpi-icu-rate">0%</span>
+                            <span class="kpi-value" id="kpi-icu-rate">{{ stats.icu_rate }}%</span>
                         </div>
                         <div class="kpi-icon icon-purple">
                             <i class="fa-solid fa-percent"></i>
@@ -148,9 +137,9 @@
                         <div class="kpi-content">
                             <span class="kpi-title">Nhịp tim & SpO2 TB</span>
                             <div class="kpi-multi-value">
-                                <span class="kpi-value-sm text-heart" id="kpi-avg-heart">0 <span class="unit">bpm</span></span>
+                                <span class="kpi-value-sm text-heart" id="kpi-avg-heart">{{ stats.avg_heart_rate }} <span class="unit">bpm</span></span>
                                 <span class="divider">/</span>
-                                <span class="kpi-value-sm text-oxygen" id="kpi-avg-oxygen">0%</span>
+                                <span class="kpi-value-sm text-oxygen" id="kpi-avg-oxygen">{{ stats.avg_oxygen }}%</span>
                             </div>
                         </div>
                         <div class="kpi-icon icon-teal">
@@ -159,63 +148,19 @@
                     </div>
                 </div>
 
-                <!-- Charts Grid -->
+                <!-- Charts (Disabled in SSR) -->
                 <div class="charts-grid">
-                    <!-- Pie Chart: ICU vs Non-ICU -->
                     <div class="chart-card glass">
                         <div class="chart-header">
-                            <h3>Phân Phối Ca Bệnh Điều Trị</h3>
-                            <p class="chart-subtitle">Tỉ lệ phần trăm bệnh nhân điều trị ICU và điều trị thường</p>
-                        </div>
-                        <div class="chart-wrapper pie-wrapper">
-                            <canvas id="chart-icu-pie"></canvas>
-                        </div>
-                        <div class="chart-footer">
-                            <p id="pie-analysis-text" class="analysis-text">Đang tải phân tích...</p>
+                            <h3>Lưu ý: Biểu đồ đã bị vô hiệu hóa vì không sử dụng JavaScript.</h3>
                         </div>
                     </div>
-
-                    <!-- Bar Chart: ICU according to Age Groups -->
-                    <div class="chart-card glass">
-                        <div class="chart-header">
-                            <h3>Tỷ Lệ Nhập ICU Theo Nhóm Tuổi</h3>
-                            <p class="chart-subtitle">So sánh số ca và tỷ lệ % vào ICU giữa các nhóm tuổi</p>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="chart-age-bar"></canvas>
-                        </div>
-                        <div class="chart-footer">
-                            <p id="bar-analysis-text" class="analysis-text">Đang tải phân tích...</p>
-                        </div>
-                    </div>
-
-                    <!-- Line Chart: Health metrics average by Age Groups -->
-                    <div class="chart-card glass col-span-2">
-                        <div class="chart-header">
-                            <div class="flex-between">
-                                <div>
-                                    <h3>Chỉ Số Sức Khỏe Trung Bình Theo Độ Tuổi</h3>
-                                    <p class="chart-subtitle">Mối quan hệ giữa Nhịp tim (BPM) và Độ bão hòa oxy máu SpO2 (%) của các độ tuổi</p>
-                                </div>
-                                <div class="chart-selectors">
-                                    <button class="selector-btn active" data-metric="both">Cả hai</button>
-                                    <button class="selector-btn" data-metric="heart">Nhịp tim</button>
-                                    <button class="selector-btn" data-metric="oxygen">SpO2</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="chart-wrapper line-wrapper">
-                            <canvas id="chart-metrics-line"></canvas>
-                        </div>
-                        <div class="chart-footer">
-                            <p id="line-analysis-text" class="analysis-text">Đang tải phân tích...</p>
-                        </div>
-                    </div>
+                    <!-- Chart section removed for SSR -->
                 </div>
             </section>
 
             <!-- Patients List Tab Content -->
-            <section class="tab-content hidden" id="tab-patients">
+            <section class="tab-content {% if tab != 'patients' %}hidden{% endif %}" id="tab-patients">
                 <div class="table-card glass">
                     <!-- Filters and Search bar -->
                     <div class="table-toolbar">
@@ -264,16 +209,31 @@
                                 </tr>
                             </thead>
                             <tbody id="patient-table-body">
-                                <!-- Dữ liệu sẽ được render từ app.js -->
+                                {% for p in patients %}
                                 <tr>
-                                    <td colspan="9" class="text-center py-5">Đang tải danh sách bệnh nhân...</td>
+                                    <td>{{ p.id }}</td>
+                                    <td>{{ p.name }}</td>
+                                    <td>{{ p.age }}</td>
+                                    <td>{{ p.gender }}</td>
+                                    <td>{% if p.icu == 1 %}<span class="badge danger">Có (ICU)</span>{% else %}<span class="badge safe">Không</span>{% endif %}</td>
+                                    <td>{{ p.heart_rate }}</td>
+                                    <td>{{ p.oxygen_saturation }}</td>
+                                    <td>{{ p.admission_date }}</td>
+                                    <td>
+                                        <a href="/delete/{{ p.id }}" class="btn btn-danger btn-sm"><i class="fa-solid fa-trash-can"></i> Xóa</a>
+                                    </td>
                                 </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-5">Chưa có dữ liệu bệnh nhân.</td>
+                                </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
                     
                     <div class="table-footer">
-                        <span id="table-row-count">Hiển thị 0 bệnh nhân</span>
+                        <span id="table-row-count">Hiển thị {{ patients|length }} bệnh nhân</span>
                         <div class="pagination" id="table-pagination" style="display: flex; gap: 0.5rem;">
                             <!-- Pagination buttons will be generated by JS -->
                         </div>
@@ -466,7 +426,7 @@
             </section>
 
             <!-- Documentation / Help Tab Content -->
-            <section class="tab-content hidden" id="tab-help">
+            <section class="tab-content {% if tab != 'help' %}hidden{% endif %}" id="tab-help">
                 <div class="help-grid">
                     <div class="help-card glass">
                         <h2><i class="fa-solid fa-hospital-user text-primary"></i> Quản Lý Dữ Liệu Bệnh Nhân</h2>
@@ -507,27 +467,27 @@
     </div>
 
     <!-- Modal Form: Add Patient -->
-    <div class="modal-overlay" id="modal-patient">
+    <div class="modal-overlay" id="modal-patient" {% if tab == 'create' %}style="display: flex;"{% endif %}>
         <div class="modal-card glass">
             <div class="modal-header">
                 <h2><i class="fa-solid fa-user-plus"></i> Thêm Bệnh Nhân Mới</h2>
-                <button class="btn-close-modal" id="btn-close-modal">&times;</button>
+                <a href="/?tab=patients" class="btn-close-modal" id="btn-close-modal">&times;</a>
             </div>
-            <form id="form-patient">
+            <form id="form-patient" action="/create" method="POST">
                 <div class="form-grid">
                     <div class="form-group col-span-2">
                         <label for="p-name">Họ và Tên <span class="required">*</span></label>
-                        <input type="text" id="p-name" placeholder="Ví dụ: Nguyễn Văn A" required>
+                        <input type="text" name="name" id="p-name" placeholder="Ví dụ: Nguyễn Văn A" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="p-age">Tuổi <span class="required">*</span></label>
-                        <input type="number" id="p-age" min="0" max="120" placeholder="Ví dụ: 45" required>
+                        <input type="number" name="age" id="p-age" min="0" max="120" placeholder="Ví dụ: 45" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="p-gender">Giới tính <span class="required">*</span></label>
-                        <select id="p-gender" required>
+                        <select name="gender" id="p-gender" required>
                             <option value="" disabled selected>Chọn giới tính</option>
                             <option value="Nam">Nam</option>
                             <option value="Nữ">Nữ</option>
@@ -537,28 +497,28 @@
                     
                     <div class="form-group">
                         <label for="p-heart">Nhịp tim (BPM) <span class="required">*</span></label>
-                        <input type="number" id="p-heart" min="30" max="250" placeholder="Ví dụ: 80" required>
+                        <input type="number" name="heart_rate" id="p-heart" min="30" max="250" placeholder="Ví dụ: 80" required>
                     </div>
                     
                     <div class="form-group">
                         <label for="p-oxygen">SpO2 (%) <span class="required">*</span></label>
-                        <input type="number" id="p-oxygen" min="50" max="100" placeholder="Ví dụ: 98" required>
+                        <input type="number" name="oxygen_saturation" id="p-oxygen" min="50" max="100" placeholder="Ví dụ: 98" required>
                     </div>
 
                     <div class="form-group">
                         <label for="p-date">Ngày nhập viện <span class="required">*</span></label>
-                        <input type="date" id="p-date" required>
+                        <input type="date" name="admission_date" id="p-date" required>
                     </div>
                     
                     <div class="form-group">
                         <label>Điều trị tại khoa ICU? <span class="required">*</span></label>
                         <div class="radio-group">
                             <label class="radio-label">
-                                <input type="radio" name="p-icu" value="1" required>
+                                <input type="radio" name="icu" value="1" required>
                                 <span class="radio-custom"></span> Có (ICU)
                             </label>
                             <label class="radio-label">
-                                <input type="radio" name="p-icu" value="0" checked required>
+                                <input type="radio" name="icu" value="0" checked required>
                                 <span class="radio-custom"></span> Không (Khoa thường)
                             </label>
                         </div>
@@ -566,13 +526,11 @@
                 </div>
                 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Hủy bỏ</button>
+                    <a href="/?tab=patients" class="btn btn-secondary">Hủy bỏ</a>
                     <button type="submit" class="btn btn-primary">Lưu thông tin</button>
                 </div>
             </form>
         </div>
     </div>
-    <!-- Load mã nguồn JavaScript -->
-    <script src="app.js"></script>
 </body>
 </html>
